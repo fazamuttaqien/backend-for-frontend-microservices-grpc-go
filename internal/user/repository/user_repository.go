@@ -8,5 +8,6 @@ import (
 type UserRepository interface {
 	Create(context.Context, *domain.User) error
 	GetByID(context.Context, string) (*domain.User, error)
+	GetByEmail(context.Context, string) (*domain.User, error)
 	Update(context.Context, *domain.User) error
 }

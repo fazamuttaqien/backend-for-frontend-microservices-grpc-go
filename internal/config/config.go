@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+	"time"
+)
 
 type Config struct {
 	HTTPPort              string
@@ -12,6 +16,9 @@ type Config struct {
 	UserDatabaseURL       string
 	ProductDatabaseURL    string
 	OrderDatabaseURL      string
+	JWTSecret             string
+	JWTIssuer             string
+	JWTTTL                time.Duration
 }
 
 func Load() Config {
@@ -25,12 +32,24 @@ func Load() Config {
 		UserDatabaseURL:       os.Getenv("USER_DATABASE_URL"),
 		ProductDatabaseURL:    os.Getenv("PRODUCT_DATABASE_URL"),
 		OrderDatabaseURL:      os.Getenv("ORDER_DATABASE_URL"),
+		JWTSecret:             os.Getenv("JWT_SECRET"),
+		JWTIssuer:             env("JWT_ISSUER", "user-service"),
+		JWTTTL:                time.Duration(envInt("JWT_TTL_MINUTES", 60)) * time.Minute,
 	}
 }
 
 func env(k, def string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
+	}
+	return def
+}
+
+func envInt(k string, def int) int {
+	if v := os.Getenv(k); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return def
 }

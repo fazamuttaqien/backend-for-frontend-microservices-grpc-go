@@ -6,6 +6,7 @@ import (
 	"net"
 
 	userv1 "github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/gen/user/v1"
+	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/auth"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/config"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/application"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/infrastructure/postgres"
@@ -19,6 +20,9 @@ func main() {
 	if cfg.UserDatabaseURL == "" {
 		log.Fatal("USER_DATABASE_URL is required")
 	}
+	if cfg.JWTSecret == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
 	db, err := pgxpool.New(context.Background(), cfg.UserDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +33,11 @@ func main() {
 	}
 	repo := postgres.NewUserRepository(db)
 	app := application.NewUserService(repo)
-	h := usergrpc.NewHandler(app)
+	jwt, err := auth.NewJWT(cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTTTL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	h := usergrpc.NewHandler(app, jwt)
 	lis, err := net.Listen("tcp", ":"+cfg.UserGRPCPort)
 	if err != nil {
 		log.Fatal(err)
