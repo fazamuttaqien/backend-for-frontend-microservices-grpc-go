@@ -1,6 +1,6 @@
-.PHONY: build run run-user run-product fmt test tidy proto-generate proto-lint proto-breaking
+.PHONY: build run run-user run-product run-order fmt test tidy proto-generate proto-lint proto-breaking
 
-build:
+build: proto-generate
 	go build ./...
 
 run:
@@ -12,10 +12,13 @@ run-user:
 run-product:
 	go run ./apps/services/product
 
+run-order:
+	go run ./apps/services/order
+
 fmt:
 	gofmt -w $$(find . -name '*.go' -not -path './.git/*')
 
-test:
+test: proto-generate
 	go test ./...
 
 tidy:
