@@ -1,0 +1,131 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: services/user
+    environment:
+      USER_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/user_service
+      USER_GRPC_PORT: 50051
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_ISSUER: ${JWT_ISSUER:-user-service}
+      JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 50051"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+  product-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: services/product
+    environment:
+      PRODUCT_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/product_service
+      PRODUCT_GRPC_PORT: 50052
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 50052"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: services/order
+    environment:
+      ORDER_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/order_service
+      ORDER_GRPC_PORT: 50053
+      USER_SERVICE_ADDRESS: user-service:50051
+      PRODUCT_SERVICE_ADDRESS: product-service:50052
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 50053"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+  bff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP: bff
+    environment:
+      BFF_HTTP_PORT: 8080
+      USER_SERVICE_ADDRESS: user-service:50051
+      PRODUCT_SERVICE_ADDRESS: product-service:50052
+      ORDER_SERVICE_ADDRESS: order-service:50053
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_ISSUER: ${JWT_ISSUER:-user-service}
+      JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+    ports:
+      - "${BFF_HTTP_PORT:-8080}:8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge

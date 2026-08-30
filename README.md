@@ -44,3 +44,16 @@ make build
 ```
 
 `make test` and `make build` regenerate protobuf code before compiling.
+
+## Docker Compose
+
+For a complete local environment containing the BFF, User Service, Product Service, Order Service, and PostgreSQL, see [`README.docker.md`](README.docker.md).
+
+Quick start:
+
+```bash
+cp .env.docker.example .env
+docker compose up --build
+```
+
+The Docker Compose setup uses Docker service names for gRPC communication, initializes the three PostgreSQL service databases, and runs application containers as a non-root user.
