@@ -13,11 +13,11 @@ const (
 )
 
 type OrderCreated struct {
-	EventID     string      `json:"event_id"`
-	Type        string      `json:"type"`
-	Version     string      `json:"version"`
-	OccurredAt  time.Time   `json:"occurred_at"`
-	Data        OrderData   `json:"data"`
+	EventID    string    `json:"event_id"`
+	Type       string    `json:"type"`
+	Version    string    `json:"version"`
+	OccurredAt time.Time `json:"occurred_at"`
+	Data       OrderData `json:"data"`
 }
 
 type OrderData struct {
@@ -30,15 +30,15 @@ type OrderData struct {
 
 func NewOrderCreated(order *domain.Order, eventID string) OrderCreated {
 	return OrderCreated{
-		EventID: eventID,
-		Type: OrderCreatedType,
-		Version: OrderCreatedVersion,
+		EventID:    eventID,
+		Type:       OrderCreatedType,
+		Version:    OrderCreatedVersion,
 		OccurredAt: order.CreatedAt,
 		Data: OrderData{
-			OrderID: order.ID,
-			UserID: order.UserID,
-			Total: order.Total,
-			Status: order.Status,
+			OrderID:   order.ID,
+			UserID:    order.UserID,
+			Total:     order.Total,
+			Status:    order.Status,
 			CreatedAt: order.CreatedAt.UTC().Format(time.RFC3339Nano),
 		},
 	}

@@ -46,9 +46,9 @@ func (p *Publisher) Publish(ctx context.Context, routingKey string, body []byte)
 		return err
 	}
 	return ch.PublishWithContext(ctx, OrderEventsExchange, routingKey, false, false, amqp.Publishing{
-		ContentType: "application/json",
+		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
-		Body: body,
+		Body:         body,
 	})
 }
 

@@ -19,20 +19,30 @@ import (
 
 func main() {
 	cfg := config.Load()
-	if cfg.OrderDatabaseURL == "" { log.Fatal("ORDER_DATABASE_URL is required") }
+	if cfg.OrderDatabaseURL == "" {
+		log.Fatal("ORDER_DATABASE_URL is required")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	db, err := pgxpool.New(ctx, cfg.OrderDatabaseURL)
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer db.Close()
-	if err = db.Ping(ctx); err != nil { log.Fatal(err) }
+	if err = db.Ping(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	userConn, err := grpcclient.DialUser(ctx, cfg.UserServiceAddress, 5*time.Second)
-	if err != nil { log.Fatalf("connect user service: %v", err) }
+	if err != nil {
+		log.Fatalf("connect user service: %v", err)
+	}
 	defer userConn.Close()
 	productConn, err := grpcclient.DialProduct(ctx, cfg.ProductServiceAddress, 5*time.Second)
-	if err != nil { log.Fatalf("connect product service: %v", err) }
+	if err != nil {
+		log.Fatalf("connect product service: %v", err)
+	}
 	defer productConn.Close()
 
 	repo := postgres.NewOrderRepository(db)
@@ -51,9 +61,13 @@ func main() {
 	app := application.NewOrderService(repo, users, products, publisher)
 	h := ordergrpc.NewHandler(app)
 	lis, err := net.Listen("tcp", ":"+cfg.OrderGRPCPort)
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	s := grpc.NewServer()
 	orderv1.RegisterOrderServiceServer(s, h)
 	log.Printf("order service listening on :%s", cfg.OrderGRPCPort)
-	if err := s.Serve(lis); err != nil { log.Fatal(err) }
+	if err := s.Serve(lis); err != nil {
+		log.Fatal(err)
+	}
 }
