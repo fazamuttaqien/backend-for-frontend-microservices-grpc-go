@@ -13,5 +13,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+      - uses: bufbuild/buf-setup-action@v1
+      - run: buf generate
       - run: go test ./...
       - run: go build ./...
