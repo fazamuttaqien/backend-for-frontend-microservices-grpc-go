@@ -1,6 +1,6 @@
 # Backend for Frontend Microservices gRPC Go
 
-Backend foundation for a system with the following architecture:
+Backend foundation for:
 
 ```text
 ReactJS
@@ -12,54 +12,92 @@ gRPC
 Microservices
 ```
 
-## Scope
+## Current stage
 
-This stage only establishes the project foundation. No business logic or concrete User, Product, or Order service is included.
+This stage establishes the Protocol Buffers and gRPC contract foundation. It does not implement the BFF, User Service, database, or business logic.
 
 ## Structure
 
 ```text
 .
 ├── apps/
-│   ├── bff/              # BFF application entrypoint
-│   └── services/         # Microservice application entrypoints (future)
-├── gen/                  # Generated protobuf Go code (future)
+│   ├── bff/                 # BFF entrypoint (future implementation)
+│   └── services/            # Microservice entrypoints (future)
+├── gen/                     # Generated Go protobuf/gRPC code
+│   └── user/v1/
 ├── internal/
-│   └── config/           # Shared application configuration
-├── proto/                # Protobuf definitions (future)
+│   └── config/              # Shared application configuration
+├── proto/
+│   ├── user/v1/             # User API version 1
+│   ├── product/v1/           # Reserved for Product API version 1
+│   └── order/v1/             # Reserved for Order API version 1
+├── buf.yaml                 # Protobuf module/lint/breaking-change config
+├── buf.gen.yaml              # Protobuf and gRPC generation config
 ├── go.mod
+├── go.sum
 ├── Makefile
 └── README.md
 ```
 
-## Go module strategy
+## Protobuf versioning
 
-The repository currently uses one Go module at the repository root. This keeps the foundation simple and allows BFF, generated protobuf code, and future microservices to evolve together without premature multi-module complexity.
+API contracts are versioned by directory and protobuf package:
 
-A multi-module workspace can be introduced later if independent module versioning or release boundaries become necessary.
+```text
+proto/user/v1/
+proto/product/v1/
+proto/order/v1/
+```
 
-## Requirements
+A breaking API evolution should introduce a new version such as `user/v2` rather than changing the existing `user/v1` contract incompatibly.
+
+## User Service contract
+
+The first example contract is `proto/user/v1/user.proto`. It defines only the API shape:
+
+- `GetUserRequest`
+- `User`
+- `GetUserResponse`
+- `UserService.GetUser`
+
+There is intentionally no User Service implementation.
+
+## Generate protobuf and gRPC code
+
+Requirements:
 
 - Go 1.24+
+- Buf CLI
 
-## Run
+Run:
 
-Build everything:
+```bash
+make proto-generate
+```
+
+This runs `buf generate` and writes generated Go files under `gen/`.
+
+Validate protobuf definitions:
+
+```bash
+make proto-lint
+```
+
+Check breaking changes against `main`:
+
+```bash
+make proto-breaking
+```
+
+## Build and test
 
 ```bash
 make build
-```
-
-Run the BFF foundation:
-
-```bash
-make run
-```
-
-Run tests:
-
-```bash
 make test
 ```
 
-The BFF currently only provides a startup placeholder; transport, gRPC clients, protobuf contracts, and business services will be added in later stages.
+The generated contract package is compiled as part of `go build ./...`.
+
+## Go module strategy
+
+The repository continues to use one Go module at the root. Protobuf contracts and generated Go code live in the same module so BFF and future microservices can consume the same versioned contracts without premature multi-module complexity.

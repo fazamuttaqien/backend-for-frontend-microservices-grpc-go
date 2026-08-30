@@ -1,4 +1,4 @@
-.PHONY: build run fmt test tidy
+.PHONY: build run fmt test tidy proto-generate proto-lint proto-breaking
 
 build:
 	go build ./...
@@ -14,3 +14,12 @@ test:
 
 tidy:
 	go mod tidy
+
+proto-generate:
+	buf generate
+
+proto-lint:
+	buf lint
+
+proto-breaking:
+	buf breaking --against '.git#branch=main'
