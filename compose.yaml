@@ -16,8 +16,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-    networks:
-      - backend
+    networks: [backend]
 
   redis:
     image: redis:8-alpine
@@ -26,15 +25,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks:
-      - backend
+    networks: [backend]
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
 
   user-service:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        APP: services/user
+      args: { APP: services/user }
     environment:
       USER_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/user_service
       USER_GRPC_PORT: 50051
@@ -42,23 +51,20 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50051"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks:
-      - backend
+    networks: [backend]
 
   product-service:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        APP: services/product
+      args: { APP: services/product }
     environment:
       PRODUCT_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/product_service
       PRODUCT_GRPC_PORT: 50052
@@ -68,50 +74,55 @@ services:
       REDIS_TIMEOUT_MS: ${REDIS_TIMEOUT_MS:-100}
       PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-60}
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50052"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks:
-      - backend
+    networks: [backend]
 
   order-service:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        APP: services/order
+      args: { APP: services/order }
     environment:
       ORDER_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/order_service
       ORDER_GRPC_PORT: 50053
       USER_SERVICE_ADDRESS: user-service:50051
       PRODUCT_SERVICE_ADDRESS: product-service:50052
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
-      postgres:
-        condition: service_healthy
-      user-service:
-        condition: service_healthy
-      product-service:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      user-service: { condition: service_healthy }
+      product-service: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50053"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks:
-      - backend
+    networks: [backend]
+
+  notification-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: { APP: consumers/notification }
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    networks: [backend]
 
   bff:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        APP: bff
+      args: { APP: bff }
     environment:
       BFF_HTTP_PORT: 8080
       USER_SERVICE_ADDRESS: user-service:50051
@@ -120,23 +131,18 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
-    ports:
-      - "${BFF_HTTP_PORT:-8080}:8080"
+    ports: ["${BFF_HTTP_PORT:-8080}:8080"]
     depends_on:
-      user-service:
-        condition: service_healthy
-      product-service:
-        condition: service_healthy
-      order-service:
-        condition: service_healthy
+      user-service: { condition: service_healthy }
+      product-service: { condition: service_healthy }
+      order-service: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8080"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks:
-      - backend
+    networks: [backend]
 
 volumes:
   postgres_data:
