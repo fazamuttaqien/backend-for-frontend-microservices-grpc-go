@@ -13,8 +13,8 @@ var (
 
 type Product struct {
 	ID, Name, Description, Price string
-	Stock                       int32
-	CreatedAt, UpdatedAt        time.Time
+	Stock                        int32
+	CreatedAt, UpdatedAt         time.Time
 }
 
 func NewProduct(id, name, description, price string, stock int32, now time.Time) (*Product, error) {
