@@ -4,18 +4,115 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"strings"
-	"time"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/domain"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/repository"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
+	"time"
 )
 
-type UserService struct { repo repository.UserRepository; now func() time.Time }
-func NewUserService(repo repository.UserRepository) *UserService { return &UserService{repo:repo, now:time.Now} }
-func newID() string { b:=make([]byte,16); if _,err:=rand.Read(b); err!=nil{return ""}; b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80; return hex.EncodeToString(b) }
+type UserService struct {
+	repo repository.UserRepository
+	now  func() time.Time
+}
+
+func NewUserService(repo repository.UserRepository) *UserService {
+	return &UserService{repo: repo, now: time.Now}
+}
+func newID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return hex.EncodeToString(b)
+}
 func validatePassword(password string) bool { return len(password) >= 8 && len(password) <= 72 }
-func (s *UserService) Create(ctx context.Context, name,email,password string)(*domain.User,error){ if err:=ctx.Err();err!=nil{return nil,err}; if !validatePassword(password){return nil,domain.ErrInvalidUser}; hash,err:=bcrypt.GenerateFromPassword([]byte(password),bcrypt.DefaultCost);if err!=nil{return nil,err}; if err=ctx.Err();err!=nil{return nil,err}; u,err:=domain.NewUser(newID(),name,email,string(hash),s.now());if err!=nil{return nil,err};if err=s.repo.Create(ctx,u);err!=nil{return nil,err};return u,nil }
-func (s *UserService) Get(ctx context.Context,id string)(*domain.User,error){if err:=ctx.Err();err!=nil{return nil,err};if strings.TrimSpace(id)==""{return nil,domain.ErrInvalidUser};return s.repo.GetByID(ctx,id)}
-func (s *UserService) Update(ctx context.Context,id,name,email,password string)(*domain.User,error){if err:=ctx.Err();err!=nil{return nil,err};u,err:=s.repo.GetByID(ctx,id);if err!=nil{return nil,err};if err=ctx.Err();err!=nil{return nil,err};hash:="";if password!=""{if !validatePassword(password){return nil,domain.ErrInvalidUser};b,e:=bcrypt.GenerateFromPassword([]byte(password),bcrypt.DefaultCost);if e!=nil{return nil,e};hash=string(b)};if err=ctx.Err();err!=nil{return nil,err};if err=u.Update(name,email,hash,s.now());err!=nil{return nil,err};if err=s.repo.Update(ctx,u);err!=nil{return nil,err};return u,nil}
-func (s *UserService) Authenticate(ctx context.Context,email,password string)(*domain.User,error){if err:=ctx.Err();err!=nil{return nil,err};if !validatePassword(password){return nil,domain.ErrInvalidCredentials};u,err:=s.repo.GetByEmail(ctx,strings.ToLower(strings.TrimSpace(email)));if err!=nil{if err==domain.ErrUserNotFound{return nil,domain.ErrInvalidCredentials};return nil,err};if err=ctx.Err();err!=nil{return nil,err};if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash),[]byte(password))!=nil{return nil,domain.ErrInvalidCredentials};return u,nil}
+func (s *UserService) Create(ctx context.Context, name, email, password string) (*domain.User, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !validatePassword(password) {
+		return nil, domain.ErrInvalidUser
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	u, err := domain.NewUser(newID(), name, email, string(hash), s.now())
+	if err != nil {
+		return nil, err
+	}
+	if err = s.repo.Create(ctx, u); err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+func (s *UserService) Get(ctx context.Context, id string) (*domain.User, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(id) == "" {
+		return nil, domain.ErrInvalidUser
+	}
+	return s.repo.GetByID(ctx, id)
+}
+func (s *UserService) Update(ctx context.Context, id, name, email, password string) (*domain.User, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	u, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	hash := ""
+	if password != "" {
+		if !validatePassword(password) {
+			return nil, domain.ErrInvalidUser
+		}
+		b, e := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if e != nil {
+			return nil, e
+		}
+		hash = string(b)
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err = u.Update(name, email, hash, s.now()); err != nil {
+		return nil, err
+	}
+	if err = s.repo.Update(ctx, u); err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+func (s *UserService) Authenticate(ctx context.Context, email, password string) (*domain.User, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !validatePassword(password) {
+		return nil, domain.ErrInvalidCredentials
+	}
+	u, err := s.repo.GetByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	if err != nil {
+		if err == domain.ErrUserNotFound {
+			return nil, domain.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+	return u, nil
+}

@@ -6,7 +6,10 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
-type Server struct { server *health.Server; service string }
+type Server struct {
+	server  *health.Server
+	service string
+}
 
 func Register(s *grpc.Server, service string) *Server {
 	h := health.NewServer()
@@ -17,7 +20,9 @@ func Register(s *grpc.Server, service string) *Server {
 }
 
 func (s *Server) Shutdown() {
-	if s == nil { return }
+	if s == nil {
+		return
+	}
 	s.server.SetServingStatus(s.service, healthpb.HealthCheckResponse_NOT_SERVING)
 	s.server.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
 	s.server.Shutdown()
