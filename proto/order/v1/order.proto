@@ -6,42 +6,45 @@ option go_package = "github.com/fazamuttaqien/backend-for-frontend-microservices
 
 message OrderItem {
   string product_id = 1;
-  int32 quantity = 2;
-  string price = 3;
-  string total = 4;
+  int32  quantity   = 2;
+  string price      = 3;
+  string total      = 4;
 }
 
 message Order {
-  string id = 1;
-  string user_id = 2;
-  repeated OrderItem items = 3;
-  string total = 4;
-  string status = 5;
-  string created_at = 6;
-  string updated_at = 7;
+  string             id         = 1;
+  string             user_id    = 2;
+  repeated OrderItem items      = 3;
+  string             total      = 4;
+  string             status     = 5;
+  string             created_at = 6;
+  string             updated_at = 7;
 }
 
 message CreateOrderItemRequest {
   string product_id = 1;
-  int32 quantity = 2;
+  int32  quantity   = 2;
 }
 
 message CreateOrderRequest {
-  string user_id = 1;
-  repeated CreateOrderItemRequest items = 2;
+  string                          user_id = 1;
+  repeated CreateOrderItemRequest items   = 2;
 }
+
 message CreateOrderResponse { Order order = 1; }
 
 message GetOrderRequest { string id = 1; }
+
 message GetOrderResponse { Order order = 1; }
 
 message ListOrdersRequest {
-  int32 page = 1;
+  int32 page      = 1;
   int32 page_size = 2;
 }
+
 message ListOrdersResponse {
   repeated Order orders = 1;
-  int32 total = 2;
+  int32          total  = 2;
 }
 
 service OrderService {
