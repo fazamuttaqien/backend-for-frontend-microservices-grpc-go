@@ -1,103 +1,77 @@
 # Backend for Frontend Microservices gRPC Go
 
-Backend foundation for:
+Architecture:
 
 ```text
-ReactJS
-  ↓
-BFF
-  ↓
-gRPC
-  ↓
-Microservices
+ReactJS -> BFF -> gRPC -> Microservices
 ```
 
 ## Current stage
 
-This stage establishes the Protocol Buffers and gRPC contract foundation. It does not implement the BFF, User Service, database, or business logic.
+The User Service MVP is implemented with Go, gRPC, PostgreSQL, and a simple Clean Architecture. Product and Order services are intentionally not implemented.
 
-## Structure
-
-```text
-.
-├── apps/
-│   ├── bff/                 # BFF entrypoint (future implementation)
-│   └── services/            # Microservice entrypoints (future)
-├── gen/                     # Generated Go protobuf/gRPC code
-│   └── user/v1/
-├── internal/
-│   └── config/              # Shared application configuration
-├── proto/
-│   ├── user/v1/             # User API version 1
-│   ├── product/v1/           # Reserved for Product API version 1
-│   └── order/v1/             # Reserved for Order API version 1
-├── buf.yaml                 # Protobuf module/lint/breaking-change config
-├── buf.gen.yaml              # Protobuf and gRPC generation config
-├── go.mod
-├── go.sum
-├── Makefile
-└── README.md
-```
-
-## Protobuf versioning
-
-API contracts are versioned by directory and protobuf package:
+## User Service structure
 
 ```text
-proto/user/v1/
-proto/product/v1/
-proto/order/v1/
+apps/services/user/
+└── main.go
+
+internal/user/
+├── domain/
+├── application/
+├── repository/
+├── infrastructure/postgres/
+└── transport/grpc/
+
+migrations/user/
+└── 001_create_users.sql
 ```
 
-A breaking API evolution should introduce a new version such as `user/v2` rather than changing the existing `user/v1` contract incompatibly.
+The User Service owns its `users` table and only accesses its own PostgreSQL database.
 
-## User Service contract
+## Configuration
 
-The first example contract is `proto/user/v1/user.proto`. It defines only the API shape:
+Required:
 
-- `GetUserRequest`
-- `User`
-- `GetUserResponse`
-- `UserService.GetUser`
+```bash
+DATABASE_URL=postgres://user:password@localhost:5432/user_service
+```
 
-There is intentionally no User Service implementation.
+Optional:
 
-## Generate protobuf and gRPC code
+```bash
+USER_GRPC_PORT=50051
+```
 
-Requirements:
+## Database migration
 
-- Go 1.24+
-- Buf CLI
+Run `migrations/user/001_create_users.sql` against the User Service PostgreSQL database before starting the service. No migration framework is required at this stage.
 
-Run:
+## Run User Service
+
+```bash
+make run-user
+```
+
+The service listens on `:50051` by default.
+
+## Build and test
+
+```bash
+make test
+make build
+```
+
+## Protobuf
+
+Contracts are versioned under `proto/user/v1`, `proto/product/v1`, and `proto/order/v1`. Generated Go code is under `gen/`.
+
+Regenerate contracts with:
 
 ```bash
 make proto-generate
 ```
 
-This runs `buf generate` and writes generated Go files under `gen/`.
+## Security
 
-Validate protobuf definitions:
-
-```bash
-make proto-lint
-```
-
-Check breaking changes against `main`:
-
-```bash
-make proto-breaking
-```
-
-## Build and test
-
-```bash
-make build
-make test
-```
-
-The generated contract package is compiled as part of `go build ./...`.
-
-## Go module strategy
-
-The repository continues to use one Go module at the root. Protobuf contracts and generated Go code live in the same module so BFF and future microservices can consume the same versioned contracts without premature multi-module complexity.
+Passwords are hashed with bcrypt and are never returned by the gRPC response. Authentication/authorization is intentionally outside this MVP.
