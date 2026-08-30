@@ -2,9 +2,11 @@ package application_test
 
 import (
 	"context"
+	"errors"
+	"testing"
+
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/product/application"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/product/domain"
-	"testing"
 )
 
 type repo struct{ products map[string]*domain.Product }
@@ -51,6 +53,7 @@ func TestCreate(t *testing.T) {
 		t.Fatal("create failed")
 	}
 }
+
 func TestGetListAndUpdate(t *testing.T) {
 	r := &repo{}
 	s := application.NewProductService(r)
@@ -74,6 +77,7 @@ func TestGetListAndUpdate(t *testing.T) {
 		t.Fatal("update failed")
 	}
 }
+
 func TestInvalidProduct(t *testing.T) {
 	r := &repo{}
 	s := application.NewProductService(r)
@@ -82,5 +86,25 @@ func TestInvalidProduct(t *testing.T) {
 	}
 	if _, err := s.Create(context.Background(), "x", "", "10", -1); err != domain.ErrInvalidProduct {
 		t.Fatal("expected invalid stock")
+	}
+}
+
+func TestCanceledContextDoesNotCallRepository(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	r := &repo{}
+	s := application.NewProductService(r)
+
+	if _, err := s.Create(ctx, "Keyboard", "Mechanical", "99.90", 10); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Create: expected context.Canceled, got %v", err)
+	}
+	if _, err := s.Get(ctx, "missing"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Get: expected context.Canceled, got %v", err)
+	}
+	if _, _, err := s.List(ctx, 1, 20); !errors.Is(err, context.Canceled) {
+		t.Fatalf("List: expected context.Canceled, got %v", err)
+	}
+	if _, err := s.Update(ctx, "missing", "x", "", "10", 1); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Update: expected context.Canceled, got %v", err)
 	}
 }
