@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/jackc/pgx/v5 v5.7.5
+	github.com/rabbitmq/amqp091-go v1.10.0
 	golang.org/x/crypto v0.38.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
