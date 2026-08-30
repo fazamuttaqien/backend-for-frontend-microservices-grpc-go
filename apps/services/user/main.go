@@ -2,23 +2,24 @@ package main
 
 import (
 	"context"
-	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/gen/user/v1"
+	"log"
+	"net"
+
+	userv1 "github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/gen/user/v1"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/config"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/application"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/infrastructure/postgres"
 	usergrpc "github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/user/transport/grpc"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
-	"log"
-	"net"
 )
 
 func main() {
 	cfg := config.Load()
-	if cfg.DatabaseURL == "" {
-		log.Fatal("DATABASE_URL is required")
+	if cfg.UserDatabaseURL == "" {
+		log.Fatal("USER_DATABASE_URL is required")
 	}
-	db, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+	db, err := pgxpool.New(context.Background(), cfg.UserDatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}

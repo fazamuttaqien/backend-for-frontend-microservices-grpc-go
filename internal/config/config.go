@@ -3,15 +3,15 @@ package config
 import "os"
 
 type Config struct {
-	HTTPPort             string
-	UserGRPCPort         string
-	ProductGRPCPort      string
-	OrderGRPCPort        string
-	UserServiceAddress   string
+	HTTPPort              string
+	UserGRPCPort          string
+	ProductGRPCPort       string
+	OrderGRPCPort         string
+	UserServiceAddress    string
 	ProductServiceAddress string
-	DatabaseURL          string
-	ProductDatabaseURL   string
-	OrderDatabaseURL     string
+	UserDatabaseURL       string
+	ProductDatabaseURL    string
+	OrderDatabaseURL      string
 }
 
 func Load() Config {
@@ -22,7 +22,7 @@ func Load() Config {
 		OrderGRPCPort:         env("ORDER_GRPC_PORT", "50053"),
 		UserServiceAddress:    env("USER_SERVICE_ADDRESS", "localhost:50051"),
 		ProductServiceAddress: env("PRODUCT_SERVICE_ADDRESS", "localhost:50052"),
-		DatabaseURL:           os.Getenv("DATABASE_URL"),
+		UserDatabaseURL:       os.Getenv("USER_DATABASE_URL"),
 		ProductDatabaseURL:    os.Getenv("PRODUCT_DATABASE_URL"),
 		OrderDatabaseURL:      os.Getenv("ORDER_DATABASE_URL"),
 	}

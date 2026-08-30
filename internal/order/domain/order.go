@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ErrOrderNotFound       = errors.New("order not found")
-	ErrInvalidOrder        = errors.New("invalid order")
-	ErrUserNotFound        = errors.New("user not found")
-	ErrProductNotFound     = errors.New("product not found")
+	ErrOrderNotFound         = errors.New("order not found")
+	ErrInvalidOrder          = errors.New("invalid order")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrProductNotFound       = errors.New("product not found")
 	ErrDependencyUnavailable = errors.New("dependency unavailable")
 )
 

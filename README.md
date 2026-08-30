@@ -34,7 +34,7 @@ The User Service owns its `users` table and only accesses its own PostgreSQL dat
 Required:
 
 ```bash
-DATABASE_URL=postgres://user:password@localhost:5432/user_service
+USER_DATABASE_URL=postgres://user:password@localhost:5432/user_service
 ```
 
 Optional:
