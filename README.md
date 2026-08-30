@@ -6,54 +6,36 @@ Architecture:
 ReactJS -> BFF -> gRPC -> Microservices
 ```
 
-## Current stage
+## User Service authentication
 
-The User Service MVP is implemented with Go, gRPC, PostgreSQL, and a simple Clean Architecture. Product and Order services are intentionally not implemented.
+The User Service now provides Register and Login with bcrypt password hashing and short-lived HMAC-SHA256 JWT access tokens. Passwords are never returned or logged, and JWT secrets are loaded from environment configuration.
 
-## User Service structure
-
-```text
-apps/services/user/
-└── main.go
-
-internal/user/
-├── domain/
-├── application/
-├── repository/
-├── infrastructure/postgres/
-└── transport/grpc/
-
-migrations/user/
-└── 001_create_users.sql
-```
-
-The User Service owns its `users` table and only accesses its own PostgreSQL database.
-
-## Configuration
-
-Required:
+Required configuration:
 
 ```bash
 DATABASE_URL=postgres://user:password@localhost:5432/user_service
+JWT_SECRET=<random secret, at least 32 bytes>
 ```
 
 Optional:
 
 ```bash
 USER_GRPC_PORT=50051
+JWT_ISSUER=user-service
+JWT_TTL_MINUTES=60
 ```
+
+`Register` and `Login` are public RPCs. `GetUser` and `UpdateUser` require `authorization: Bearer <JWT>` metadata. The same JWT can be forwarded by the BFF to downstream protected gRPC calls.
 
 ## Database migration
 
-Run `migrations/user/001_create_users.sql` against the User Service PostgreSQL database before starting the service. No migration framework is required at this stage.
+Run `migrations/user/001_create_users.sql` against the User Service PostgreSQL database before starting the service.
 
 ## Run User Service
 
 ```bash
 make run-user
 ```
-
-The service listens on `:50051` by default.
 
 ## Build and test
 
@@ -62,16 +44,4 @@ make test
 make build
 ```
 
-## Protobuf
-
-Contracts are versioned under `proto/user/v1`, `proto/product/v1`, and `proto/order/v1`. Generated Go code is under `gen/`.
-
-Regenerate contracts with:
-
-```bash
-make proto-generate
-```
-
-## Security
-
-Passwords are hashed with bcrypt and are never returned by the gRPC response. Authentication/authorization is intentionally outside this MVP.
+`make test` and `make build` regenerate protobuf code before compiling.
