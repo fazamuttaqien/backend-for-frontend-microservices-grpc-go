@@ -19,6 +19,16 @@ services:
     networks:
       - backend
 
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+
   user-service:
     build:
       context: .
@@ -52,6 +62,11 @@ services:
     environment:
       PRODUCT_DATABASE_URL: postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@postgres:5432/product_service
       PRODUCT_GRPC_PORT: 50052
+      REDIS_ADDRESS: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_TIMEOUT_MS: ${REDIS_TIMEOUT_MS:-100}
+      PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-60}
     depends_on:
       postgres:
         condition: service_healthy
