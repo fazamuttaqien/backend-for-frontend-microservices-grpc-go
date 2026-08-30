@@ -10,6 +10,21 @@ import (
 	"google.golang.org/grpc"
 )
 
+type UserService interface {
+	Get(ctx context.Context, id, token string) (*userv1.User, error)
+}
+
+type ProductService interface {
+	List(ctx context.Context, page, size int32) (*productv1.ListProductResponse, error)
+	Get(ctx context.Context, id string) (*productv1.Product, error)
+}
+
+type OrderService interface {
+	Create(ctx context.Context, req *orderv1.CreateOrderRequest) (*orderv1.Order, error)
+	List(ctx context.Context, page, size int32) (*orderv1.ListOrdersResponse, error)
+	Get(ctx context.Context, id string) (*orderv1.Order, error)
+}
+
 type UserClient struct {
 	client  userv1.UserServiceClient
 	timeout time.Duration
@@ -18,6 +33,7 @@ type UserClient struct {
 func NewUserClient(conn grpc.ClientConnInterface) *UserClient {
 	return &UserClient{client: userv1.NewUserServiceClient(conn), timeout: 3 * time.Second}
 }
+
 func (c *UserClient) Get(ctx context.Context, id, token string) (*userv1.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -36,11 +52,13 @@ type ProductClient struct {
 func NewProductClient(conn grpc.ClientConnInterface) *ProductClient {
 	return &ProductClient{client: productv1.NewProductServiceClient(conn), timeout: 3 * time.Second}
 }
+
 func (c *ProductClient) List(ctx context.Context, page, size int32) (*productv1.ListProductResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	return c.client.ListProduct(ctx, &productv1.ListProductRequest{Page: page, PageSize: size})
 }
+
 func (c *ProductClient) Get(ctx context.Context, id string) (*productv1.Product, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -59,6 +77,7 @@ type OrderClient struct {
 func NewOrderClient(conn grpc.ClientConnInterface) *OrderClient {
 	return &OrderClient{client: orderv1.NewOrderServiceClient(conn), timeout: 5 * time.Second}
 }
+
 func (c *OrderClient) Create(ctx context.Context, req *orderv1.CreateOrderRequest) (*orderv1.Order, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -68,11 +87,13 @@ func (c *OrderClient) Create(ctx context.Context, req *orderv1.CreateOrderReques
 	}
 	return res.GetOrder(), nil
 }
+
 func (c *OrderClient) List(ctx context.Context, page, size int32) (*orderv1.ListOrdersResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	return c.client.ListOrders(ctx, &orderv1.ListOrdersRequest{Page: page, PageSize: size})
 }
+
 func (c *OrderClient) Get(ctx context.Context, id string) (*orderv1.Order, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -84,7 +105,7 @@ func (c *OrderClient) Get(ctx context.Context, id string) (*orderv1.Order, error
 }
 
 type Clients struct {
-	User    *UserClient
-	Product *ProductClient
-	Order   *OrderClient
+	User    UserService
+	Product ProductService
+	Order   OrderService
 }
