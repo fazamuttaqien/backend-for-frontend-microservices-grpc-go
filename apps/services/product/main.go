@@ -17,20 +17,30 @@ import (
 
 func main() {
 	cfg := config.Load()
-	if cfg.ProductDatabaseURL == "" { log.Fatal("PRODUCT_DATABASE_URL is required") }
+	if cfg.ProductDatabaseURL == "" {
+		log.Fatal("PRODUCT_DATABASE_URL is required")
+	}
 	db, err := pgxpool.New(context.Background(), cfg.ProductDatabaseURL)
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer db.Close()
-	if err = db.Ping(context.Background()); err != nil { log.Fatal(err) }
+	if err = db.Ping(context.Background()); err != nil {
+		log.Fatal(err)
+	}
 
 	repo := postgres.NewProductRepository(db)
 	cache := productredis.NewProductCache(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDB, cfg.RedisTimeout, cfg.ProductCacheTTL)
 	app := application.NewProductService(repo, cache)
 	h := productgrpc.NewHandler(app)
 	lis, err := net.Listen("tcp", ":"+cfg.ProductGRPCPort)
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	s := grpc.NewServer()
 	productv1.RegisterProductServiceServer(s, h)
 	log.Printf("product service listening on :%s", cfg.ProductGRPCPort)
-	if err := s.Serve(lis); err != nil { log.Fatal(err) }
+	if err := s.Serve(lis); err != nil {
+		log.Fatal(err)
+	}
 }

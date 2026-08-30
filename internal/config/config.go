@@ -51,13 +51,17 @@ func Load() Config {
 }
 
 func env(k, def string) string {
-	if v := os.Getenv(k); v != "" { return v }
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
 	return def
 }
 
 func envInt(k string, def int) int {
 	if v := os.Getenv(k); v != "" {
-		if n, err := strconv.Atoi(v); err == nil { return n }
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return def
 }
