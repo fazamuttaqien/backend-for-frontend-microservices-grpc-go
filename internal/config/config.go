@@ -20,6 +20,11 @@ type Config struct {
 	JWTSecret             string
 	JWTIssuer             string
 	JWTTTL                time.Duration
+	RedisAddress          string
+	RedisPassword         string
+	RedisDB               int
+	RedisTimeout          time.Duration
+	ProductCacheTTL       time.Duration
 }
 
 func Load() Config {
@@ -37,20 +42,22 @@ func Load() Config {
 		JWTSecret:             os.Getenv("JWT_SECRET"),
 		JWTIssuer:             env("JWT_ISSUER", "user-service"),
 		JWTTTL:                time.Duration(envInt("JWT_TTL_MINUTES", 60)) * time.Minute,
+		RedisAddress:          env("REDIS_ADDRESS", "localhost:6379"),
+		RedisPassword:         os.Getenv("REDIS_PASSWORD"),
+		RedisDB:               envInt("REDIS_DB", 0),
+		RedisTimeout:          time.Duration(envInt("REDIS_TIMEOUT_MS", 100)) * time.Millisecond,
+		ProductCacheTTL:       time.Duration(envInt("PRODUCT_CACHE_TTL_SECONDS", 60)) * time.Second,
 	}
 }
 
 func env(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
+	if v := os.Getenv(k); v != "" { return v }
 	return def
 }
+
 func envInt(k string, def int) int {
 	if v := os.Getenv(k); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
+		if n, err := strconv.Atoi(v); err == nil { return n }
 	}
 	return def
 }
