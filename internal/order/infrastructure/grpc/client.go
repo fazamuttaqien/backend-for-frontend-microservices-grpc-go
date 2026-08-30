@@ -6,6 +6,8 @@ import (
 
 	productv1 "github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/gen/product/v1"
 	userv1 "github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/gen/user/v1"
+	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/observability"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,11 +18,11 @@ func dial(ctx context.Context, address string, timeout time.Duration) (*grpc.Cli
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
+	return grpc.NewClient(address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpc.WithUnaryInterceptor(observability.UnaryClientInterceptor()),
+	)
 }
 
 func DialUser(ctx context.Context, address string, timeout time.Duration) (*grpc.ClientConn, error) {
@@ -35,6 +37,7 @@ type UserClient struct {
 func NewUserClient(conn grpc.ClientConnInterface, timeout time.Duration) *UserClient {
 	return &UserClient{client: userv1.NewUserServiceClient(conn), timeout: timeout}
 }
+
 func (c *UserClient) GetUser(ctx context.Context, id string) error {
 	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -54,6 +57,7 @@ type ProductClient struct {
 func NewProductClient(conn grpc.ClientConnInterface, timeout time.Duration) *ProductClient {
 	return &ProductClient{client: productv1.NewProductServiceClient(conn), timeout: timeout}
 }
+
 func (c *ProductClient) GetProduct(ctx context.Context, id string) (string, error) {
 	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()

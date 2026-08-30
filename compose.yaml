@@ -41,6 +41,41 @@ services:
       retries: 10
     networks: [backend]
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+    networks: [backend]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.160.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./docker/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+      - "${OTEL_METRICS_PORT:-8889}:8889"
+    depends_on:
+      jaeger: { condition: service_started }
+    networks: [backend]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      otel-collector: { condition: service_started }
+    networks: [backend]
+
   user-service:
     build:
       context: .
@@ -52,8 +87,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       postgres: { condition: service_healthy }
+      otel-collector: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50051"]
       interval: 5s
@@ -75,8 +112,10 @@ services:
       REDIS_DB: ${REDIS_DB:-0}
       REDIS_TIMEOUT_MS: ${REDIS_TIMEOUT_MS:-100}
       PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-60}
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       postgres: { condition: service_healthy }
+      otel-collector: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50052"]
       interval: 5s
@@ -96,11 +135,13 @@ services:
       USER_SERVICE_ADDRESS: user-service:50051
       PRODUCT_SERVICE_ADDRESS: product-service:50052
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-change-me}@rabbitmq:5672/
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       postgres: { condition: service_healthy }
       user-service: { condition: service_healthy }
       product-service: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      otel-collector: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 50053"]
       interval: 5s
@@ -133,11 +174,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+      OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["${BFF_HTTP_PORT:-8080}:8080"]
     depends_on:
       user-service: { condition: service_healthy }
       product-service: { condition: service_healthy }
       order-service: { condition: service_healthy }
+      otel-collector: { condition: service_started }
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8080"]
       interval: 5s
@@ -148,6 +191,7 @@ services:
 
 volumes:
   postgres_data:
+  prometheus_data:
 
 networks:
   backend:

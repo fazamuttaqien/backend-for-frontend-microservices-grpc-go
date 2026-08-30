@@ -5,6 +5,12 @@ go 1.24
 require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/rabbitmq/amqp091-go v1.10.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
+	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
+	go.opentelemetry.io/otel/sdk v1.36.0
 	golang.org/x/crypto v0.38.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6

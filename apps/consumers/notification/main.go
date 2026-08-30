@@ -3,56 +3,66 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
+	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/observability"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/order/broker"
 	"github.com/fazamuttaqien/backend-for-frontend-microservices-grpc-go/internal/order/events"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
+	logger := observability.NewLogger()
+	slog.SetDefault(logger)
 	url := os.Getenv("RABBITMQ_URL")
 	if url == "" {
 		url = "amqp://guest:guest@localhost:5672/"
 	}
 	conn, err := amqp.Dial(url)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("connect RabbitMQ", "error", err)
+		return
 	}
 	defer conn.Close()
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("open RabbitMQ channel", "error", err)
+		return
 	}
 	defer ch.Close()
 
 	if err := ch.ExchangeDeclare(broker.OrderEventsExchange, amqp.ExchangeTopic, true, false, false, false, nil); err != nil {
-		log.Fatal(err)
+		logger.Error("declare order events exchange", "error", err)
+		return
 	}
 	queue, err := ch.QueueDeclare("order.notification", true, false, false, false, nil)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("declare notification queue", "error", err)
+		return
 	}
 	if err := ch.QueueBind(queue.Name, broker.OrderCreatedKey, broker.OrderEventsExchange, false, nil); err != nil {
-		log.Fatal(err)
+		logger.Error("bind notification queue", "error", err)
+		return
 	}
 	if err := ch.Qos(1, 0, false); err != nil {
-		log.Fatal(err)
+		logger.Error("configure RabbitMQ QoS", "error", err)
+		return
 	}
 
 	messages, err := ch.Consume(queue.Name, "order-notification-consumer", false, false, false, false, nil)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("consume notification queue", "error", err)
+		return
 	}
-	log.Printf("notification consumer listening queue=%s", queue.Name)
+	logger.Info("notification consumer listening", "queue", queue.Name)
 	for delivery := range messages {
 		if err := process(delivery.Body); err != nil {
-			log.Printf("event processing failed after retries error=%v body=%s", err, delivery.Body)
+			logger.Error("event processing failed after retries", "error", err)
 		}
 		if err := delivery.Ack(false); err != nil {
-			log.Printf("ack failed: %v", err)
+			logger.Error("ack failed", "error", err)
 		}
 	}
 }
@@ -80,6 +90,7 @@ func process(body []byte) error {
 }
 
 func simulateNotification(_ context.Context, event events.OrderCreated) error {
-	log.Printf("notification simulation: order created order_id=%s user_id=%s total=%s status=%s", event.Data.OrderID, event.Data.UserID, event.Data.Total, event.Data.Status)
+	// Deliberately omit user identifiers and order contents from logs.
+	slog.Default().Info("notification simulation: order created", "status", event.Data.Status)
 	return nil
 }
