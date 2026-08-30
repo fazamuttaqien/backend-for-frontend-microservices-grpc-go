@@ -11,6 +11,8 @@ import (
 )
 
 type UserService interface {
+	Register(ctx context.Context, name, email, password string) (*userv1.User, error)
+	Login(ctx context.Context, email, password string) (*userv1.LoginResponse, error)
 	Get(ctx context.Context, id, token string) (*userv1.User, error)
 }
 
@@ -32,6 +34,22 @@ type UserClient struct {
 
 func NewUserClient(conn grpc.ClientConnInterface) *UserClient {
 	return &UserClient{client: userv1.NewUserServiceClient(conn), timeout: 3 * time.Second}
+}
+
+func (c *UserClient) Register(ctx context.Context, name, email, password string) (*userv1.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	res, err := c.client.Register(ctx, &userv1.CreateUserRequest{Name: name, Email: email, Password: password})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetUser(), nil
+}
+
+func (c *UserClient) Login(ctx context.Context, email, password string) (*userv1.LoginResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	return c.client.Login(ctx, &userv1.LoginRequest{Email: email, Password: password})
 }
 
 func (c *UserClient) Get(ctx context.Context, id, token string) (*userv1.User, error) {
