@@ -13,9 +13,14 @@ import (
 )
 
 func dial(ctx context.Context, address string, timeout time.Duration) (*grpc.ClientConn, error) {
-	callCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	return grpc.DialContext(callCtx, address, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func DialUser(ctx context.Context, address string, timeout time.Duration) (*grpc.ClientConn, error) {
