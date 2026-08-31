@@ -13,6 +13,18 @@ otelcol.receiver.otlp "default" {
   }
 
   output {
+    metrics = [otelcol.processor.memory_limiter.default.input]
+    logs    = [otelcol.processor.memory_limiter.default.input]
+    traces  = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
+otelcol.processor.memory_limiter "default" {
+  check_interval       = "1s"
+  limit_percentage     = 80
+  spike_limit_percentage = 20
+
+  output {
     metrics = [otelcol.processor.batch.default.input]
     logs    = [otelcol.processor.batch.default.input]
     traces  = [otelcol.processor.batch.default.input]
@@ -20,6 +32,9 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.batch "default" {
+  send_batch_size = 512
+  timeout         = "5s"
+
   output {
     metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
     logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
@@ -38,5 +53,19 @@ otelcol.exporter.otlphttp "grafana_cloud" {
   client {
     endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
     auth     = otelcol.auth.basic.grafana_cloud.handler
+    timeout  = "10s"
+  }
+
+  retry_on_failure {
+    enabled          = true
+    initial_interval = "1s"
+    max_interval     = "30s"
+    max_elapsed_time = "5m"
+  }
+
+  sending_queue {
+    enabled       = true
+    queue_size    = 1000
+    num_consumers = 4
   }
 }
