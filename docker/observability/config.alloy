@@ -4,13 +4,8 @@ logging {
 }
 
 otelcol.receiver.otlp "default" {
-  grpc {
-    endpoint = "0.0.0.0:4317"
-  }
-
-  http {
-    endpoint = "0.0.0.0:4318"
-  }
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
 
   output {
     metrics = [otelcol.processor.memory_limiter.default.input]
@@ -20,8 +15,8 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.memory_limiter "default" {
-  check_interval       = "1s"
-  limit_percentage     = 80
+  check_interval         = "1s"
+  limit_percentage       = 80
   spike_limit_percentage = 20
 
   output {
@@ -67,5 +62,78 @@ otelcol.exporter.otlphttp "grafana_cloud" {
     enabled       = true
     queue_size    = 1000
     num_consumers = 4
+  }
+}
+
+// Go applications currently write structured JSON logs to stdout. Collect those
+// Docker logs without rewriting the application logging system. trace_id and
+// span_id are kept as structured metadata, not Loki labels, to avoid cardinality
+// explosion while preserving Grafana trace correlation.
+discovery.docker "backend" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "backend_logs" {
+  targets = discovery.docker.backend.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(bff|user-service|product-service|order-service)"
+    target_label  = "service_name"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(bff|user-service|product-service|order-service)"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "backend_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.backend_logs.output
+  forward_to = [loki.process.backend_logs.receiver]
+}
+
+loki.process "backend_logs" {
+  stage.docker { }
+
+  stage.json {
+    expressions = {
+      trace_id = "trace_id",
+      span_id  = "span_id",
+      level    = "level",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      trace_id = "",
+      span_id  = "",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_ENDPOINT")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+
+    retry_on_http_429 = true
+    min_backoff_period = "1s"
+    max_backoff_period = "30s"
+    max_backoff_retries = 10
   }
 }
