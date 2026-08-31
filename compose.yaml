@@ -40,7 +40,7 @@ services:
       GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?GRAFANA_CLOUD_API_KEY must be set}
     volumes: [./docker/observability/config.alloy:/etc/alloy/config.alloy:ro]
     depends_on: { otel-collector: { condition: service_started } }
-    networks: [backend]
+    networks: [observability, egress]
   prometheus:
     image: prom/prometheus:v3.5.0
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
@@ -62,7 +62,7 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [backend]
+    networks: [backend, observability]
   product-service:
     build: { context: ., dockerfile: Dockerfile, args: { APP: services/product } }
     environment:
@@ -82,7 +82,7 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [backend]
+    networks: [backend, observability]
   order-service:
     build: { context: ., dockerfile: Dockerfile, args: { APP: services/order } }
     environment:
@@ -100,7 +100,7 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [backend]
+    networks: [backend, observability]
   notification-consumer:
     build: { context: ., dockerfile: Dockerfile, args: { APP: consumers/notification } }
     environment:
@@ -127,6 +127,9 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [backend]
+    networks: [backend, observability]
 volumes: { postgres_data: {}, prometheus_data: {} }
-networks: { backend: { driver: bridge } }
+networks:
+  backend: { driver: bridge }
+  observability: { driver: bridge, internal: true }
+  egress: { driver: bridge }
