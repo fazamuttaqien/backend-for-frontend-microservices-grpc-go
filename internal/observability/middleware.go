@@ -37,12 +37,17 @@ func HTTPMiddleware(serviceName string, next http.Handler) http.Handler {
 		instrumented := otelhttp.NewMiddleware(serviceName, otelhttp.WithServerName(serviceName))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if sc := trace.SpanContextFromContext(r.Context()); sc.IsValid() {
 				w.Header().Set("X-Trace-ID", sc.TraceID().String())
+				w.Header().Set("Server-Timing", serverTimingTraceparent(sc))
 			}
 			next.ServeHTTP(w, r)
 			Logger(r.Context()).Info("http request completed", "service", serviceName, "method", r.Method, "path", r.URL.Path, "status", rw.status, "duration_ms", time.Since(started).Milliseconds())
 		}))
 		instrumented.ServeHTTP(rw, r)
 	})
+}
+
+func serverTimingTraceparent(sc trace.SpanContext) string {
+	return `traceparent;desc="00-` + sc.TraceID().String() + `-` + sc.SpanID().String() + `-01"`
 }
 
 type statusWriter struct {
