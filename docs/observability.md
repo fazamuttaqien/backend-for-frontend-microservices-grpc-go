@@ -1,93 +1,80 @@
 # Observability
 
-The backend emits structured logs plus OpenTelemetry traces and metrics. Docker Compose uses Grafana Alloy as the telemetry gateway.
+The backend uses OpenTelemetry for traces and metrics and structured JSON logs on stdout. Grafana Alloy is the only telemetry gateway in Docker Compose; the local OpenTelemetry Collector, Jaeger, and Prometheus have been removed.
 
-## Signal architecture
+## Architecture
 
 ```text
-BFF / User / Product / Order
+Go services
+(BFF / User / Product / Order)
         |
         | OTLP/gRPC
         v
 Grafana Alloy
-   |            \
-   |             \
-OTLP/HTTP       Loki HTTP
-   |             |
-   v             v
-Grafana Cloud Metrics/Traces   Grafana Cloud Logs
+   |              \
+   | OTLP/HTTP      \ Loki HTTP
+   v                 \
+Grafana Cloud         Grafana Cloud
+Traces + Metrics       Logs
 ```
 
-## Traces
+## Applications
 
-The Go applications use OpenTelemetry HTTP and gRPC instrumentation. W3C trace context is propagated through the BFF and downstream gRPC calls. The response also exposes request/trace identifiers for operational debugging.
-
-Docker Compose sets a stable OpenTelemetry resource identity for each application:
-
-```text
-service.name=bff
-service.name=user-service
-service.name=product-service
-service.name=order-service
-```
-
-and the shared environment metadata:
-
-```text
-deployment.environment.name=docker
-```
-
-This metadata is attached by the application OpenTelemetry resource configuration and is used consistently across metrics and traces.
-
-## Metrics
-
-Application metrics are exported through OTLP. Existing HTTP/gRPC instrumentation is preserved; no high-cardinality custom metrics are introduced. The stable service identity and deployment environment metadata allow Grafana Cloud metrics to be filtered alongside traces.
-
-## Logs
-
-The existing Go logging system writes structured JSON logs to stdout. It is intentionally not rewritten to an OpenTelemetry logging SDK for this migration.
-
-Grafana Alloy reads Docker container logs through `loki.source.docker`, parses the existing Docker envelope and JSON payload, and sends them to Grafana Cloud Logs. `trace_id` and `span_id` are extracted as Loki structured metadata rather than labels. This preserves trace correlation without creating a Loki stream for every trace.
-
-Only low-cardinality metadata such as service identity and log level should be labels. Trace IDs, span IDs, request IDs, user IDs, and similar high-cardinality values must not be Loki labels.
-
-Application logs must not contain request bodies, authorization headers, JWTs, passwords, API keys, database credentials, or other secrets.
-
-## Grafana Cloud correlation
-
-Correlation is based on:
-
-- `service.name` for traces and metrics.
-- `deployment.environment.name=docker` for environment filtering.
-- `trace_id` and `span_id` in structured log metadata.
-- W3C trace context across HTTP and gRPC boundaries.
-
-A log generated during an instrumented request therefore carries the trace identifier needed to navigate from the log to the corresponding distributed trace. Metrics and traces share the same service resource identity.
-
-## Docker permissions
-
-Alloy needs read-only access to `/var/run/docker.sock` to collect stdout/container logs without modifying application logging. The socket is not exposed to backend application containers.
-
-## Environment variables
-
-Applications:
+The Go applications retain their OpenTelemetry SDK, HTTP/gRPC instrumentation, W3C trace propagation, and graceful telemetry shutdown. Docker Compose sends application telemetry to Alloy through Docker DNS:
 
 ```text
 OTEL_EXPORTER_OTLP_ENDPOINT=alloy:4317
 OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-OTEL_RESOURCE_ATTRIBUTES=service.name=<service>,deployment.environment.name=docker
 ```
 
-Alloy only:
+Each application has a stable `service.name` and `deployment.environment.name=docker` resource identity.
+
+## Grafana Alloy
+
+Alloy receives OTLP on the Docker-internal `observability` network:
+
+- gRPC: `alloy:4317`
+- HTTP: `alloy:4318`
+
+The receiver is not published to the host. Alloy applies memory protection and batching before exporting OTLP telemetry to Grafana Cloud with timeout, retry, and persistent sending queue settings.
+
+Alloy also reads the four backend containers' Docker stdout logs through the read-only Docker socket. Existing application logging is not rewritten.
+
+## Logs
+
+Go services continue to emit structured JSON logs. Alloy collects Docker logs, parses the JSON payload, and sends them to Grafana Cloud Logs. `trace_id` and `span_id` are retained as structured metadata rather than Loki labels. High-cardinality identifiers such as trace IDs, span IDs, request IDs, and user IDs must not be labels.
+
+Application logs must not contain JWTs, passwords, API keys, database credentials, Authorization headers, request bodies, or other secrets.
+
+## Grafana Cloud credentials
+
+Only Alloy receives:
 
 ```text
-GRAFANA_CLOUD_OTLP_ENDPOINT=<Grafana Cloud OTLP endpoint>
-GRAFANA_CLOUD_LOKI_ENDPOINT=<Grafana Cloud Loki push endpoint>
-GRAFANA_CLOUD_INSTANCE_ID=<Grafana Cloud instance/stack identifier>
-GRAFANA_CLOUD_API_KEY=<Grafana Cloud API key>
+GRAFANA_CLOUD_OTLP_ENDPOINT
+GRAFANA_CLOUD_LOKI_ENDPOINT
+GRAFANA_CLOUD_INSTANCE_ID
+GRAFANA_CLOUD_API_KEY
 ```
 
-No Grafana Cloud credential is injected into the BFF or microservice containers.
+Application containers do not receive Grafana Cloud credentials. Real credentials must be supplied through the local environment and must never be committed or baked into an image.
+
+## Removed local stack
+
+The following obsolete components/configuration have been removed because Grafana Cloud is now the telemetry backend:
+
+- OpenTelemetry Collector service
+- Jaeger service
+- Prometheus service
+- `docker/observability/otel-collector.yaml`
+- `docker/observability/prometheus.yml`
+- legacy local collector/Jaeger/Prometheus ports and environment variables
+
+The OpenTelemetry Go SDK and application instrumentation are intentionally retained.
+
+## Makefile
+
+No observability-specific Makefile target was present, so no Makefile change is required. Existing build, test, formatting, and protobuf targets remain unchanged.
 
 ## Validation
 
@@ -100,9 +87,4 @@ docker compose ps
 docker compose logs alloy
 ```
 
-Then generate a request through the BFF and verify in Grafana Cloud that:
-
-1. the trace contains BFF and downstream gRPC spans;
-2. metrics use the expected `service.name` and environment metadata;
-3. the corresponding application log contains the same `trace_id` and `span_id` as the trace;
-4. no JWT, password, Authorization header, or other secret appears in logs.
+Then generate traffic through the BFF and verify in Grafana Cloud that traces, metrics, and logs use the expected service identity and trace context. Also verify that no Grafana Cloud credential is present in application container environments and no JWT, password, Authorization header, or other secret appears in logs.
