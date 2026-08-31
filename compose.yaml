@@ -39,7 +39,6 @@ services:
       GRAFANA_CLOUD_INSTANCE_ID: ${GRAFANA_CLOUD_INSTANCE_ID:?GRAFANA_CLOUD_INSTANCE_ID must be set}
       GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?GRAFANA_CLOUD_API_KEY must be set}
     volumes: [./docker/observability/config.alloy:/etc/alloy/config.alloy:ro]
-    depends_on: { otel-collector: { condition: service_started } }
     networks: [observability, egress]
   prometheus:
     image: prom/prometheus:v3.5.0
