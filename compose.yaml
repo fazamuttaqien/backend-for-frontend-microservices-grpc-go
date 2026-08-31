@@ -33,6 +33,9 @@ services:
       - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
       - alloy_data:/var/lib/alloy/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     networks: [observability, egress]
   user-service:
     build: { context: ., dockerfile: Dockerfile, args: { APP: services/user } }
