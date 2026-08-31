@@ -15,21 +15,9 @@ services:
     networks: [backend]
   rabbitmq:
     image: rabbitmq:4-management-alpine
-    environment: { RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER must be set}, RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set} }
+    environment: { RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER must be set}, RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set }
     ports: ["${RABBITMQ_PORT:-5672}:5672", "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"]
     healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 5s, timeout: 5s, retries: 10 }
-    networks: [backend]
-  jaeger:
-    image: jaegertracing/all-in-one:1.76.0
-    environment: { COLLECTOR_OTLP_ENABLED: "true" }
-    ports: ["${JAEGER_UI_PORT:-16686}:16686"]
-    networks: [backend]
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.160.0
-    command: ["--config=/etc/otelcol-contrib/config.yaml"]
-    volumes: [./docker/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro]
-    ports: ["${OTEL_GRPC_PORT:-4317}:4317", "${OTEL_HTTP_PORT:-4318}:4318", "${OTEL_METRICS_PORT:-8889}:8889"]
-    depends_on: { jaeger: { condition: service_started } }
     networks: [backend]
   alloy:
     image: grafana/alloy:latest
@@ -44,13 +32,6 @@ services:
       - alloy_data:/var/lib/alloy/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [observability, egress]
-  prometheus:
-    image: prom/prometheus:v3.5.0
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
-    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
-    volumes: [./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro, prometheus_data:/prometheus]
-    depends_on: { otel-collector: { condition: service_started } }
-    networks: [backend]
   user-service:
     build: { context: ., dockerfile: Dockerfile, args: { APP: services/user } }
     environment:
@@ -139,7 +120,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     networks: [backend, observability]
-volumes: { postgres_data: {}, prometheus_data: {}, alloy_data: {} }
+volumes: { postgres_data: {}, alloy_data: {} }
 networks:
   backend: { driver: bridge }
   observability: { driver: bridge, internal: true }
