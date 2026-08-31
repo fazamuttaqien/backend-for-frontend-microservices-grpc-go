@@ -7,7 +7,7 @@ services:
       POSTGRES_DB: postgres
     ports: ["${POSTGRES_PORT:-5432}:5432"]
     volumes: [postgres_data:/var/lib/postgresql/data, ./docker/postgres/init:/docker-entrypoint-initdb.d:ro]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"], interval: 5s, timeout: 5s, retries: 10, start_period: 5s }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"], interval: 5s, timeout: 3s, retries: 10, start_period: 5s }
     networks: [backend]
   redis:
     image: redis:8-alpine
@@ -47,7 +47,7 @@ services:
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      OTEL_RESOURCE_ATTRIBUTES: ${USER_OTEL_RESOURCE_ATTRIBUTES:-service.name=user-service,deployment.environment.name=docker}
+      OTEL_RESOURCE_ATTRIBUTES: ${USER_OTEL_RESOURCE_ATTRIBUTES:-service.name=user-service,service.namespace=bff-microservices-grpc,deployment.environment=production,service.version=${USER_SERVICE_VERSION:-0.1.0}}
     depends_on: { postgres: { condition: service_healthy }, alloy: { condition: service_started } }
     healthcheck: { test: ["CMD", "/app/healthcheck", "localhost:50051"], interval: 5s, timeout: 3s, retries: 10, start_period: 5s }
     read_only: true
@@ -69,7 +69,7 @@ services:
       PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-60}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      OTEL_RESOURCE_ATTRIBUTES: ${PRODUCT_OTEL_RESOURCE_ATTRIBUTES:-service.name=product-service,deployment.environment.name=docker}
+      OTEL_RESOURCE_ATTRIBUTES: ${PRODUCT_OTEL_RESOURCE_ATTRIBUTES:-service.name=product-service,service.namespace=bff-microservices-grpc,deployment.environment=production,service.version=${PRODUCT_SERVICE_VERSION:-0.1.0}}
     depends_on: { postgres: { condition: service_healthy }, alloy: { condition: service_started } }
     healthcheck: { test: ["CMD", "/app/healthcheck", "localhost:50052"], interval: 5s, timeout: 3s, retries: 10, start_period: 5s }
     read_only: true
@@ -89,7 +89,7 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:?RABBITMQ_USER must be set}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      OTEL_RESOURCE_ATTRIBUTES: ${ORDER_OTEL_RESOURCE_ATTRIBUTES:-service.name=order-service,deployment.environment.name=docker}
+      OTEL_RESOURCE_ATTRIBUTES: ${ORDER_OTEL_RESOURCE_ATTRIBUTES:-service.name=order-service,service.namespace=bff-microservices-grpc,deployment.environment=production,service.version=${ORDER_SERVICE_VERSION:-0.1.0}}
     depends_on: { postgres: { condition: service_healthy }, user-service: { condition: service_healthy }, product-service: { condition: service_healthy }, rabbitmq: { condition: service_healthy }, alloy: { condition: service_started } }
     healthcheck: { test: ["CMD", "/app/healthcheck", "localhost:50053"], interval: 5s, timeout: 3s, retries: 10, start_period: 5s }
     read_only: true
@@ -117,7 +117,7 @@ services:
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      OTEL_RESOURCE_ATTRIBUTES: ${BFF_OTEL_RESOURCE_ATTRIBUTES:-service.name=bff,deployment.environment.name=docker}
+      OTEL_RESOURCE_ATTRIBUTES: ${BFF_OTEL_RESOURCE_ATTRIBUTES:-service.name=bff,service.namespace=bff-microservices-grpc,deployment.environment=production,service.version=${BFF_VERSION:-0.1.0}}
     ports: ["${BFF_HTTP_PORT:-8080}:8080"]
     depends_on: { user-service: { condition: service_healthy }, product-service: { condition: service_healthy }, order-service: { condition: service_healthy }, alloy: { condition: service_started } }
     healthcheck: { test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"], interval: 5s, timeout: 3s, retries: 10, start_period: 5s }
