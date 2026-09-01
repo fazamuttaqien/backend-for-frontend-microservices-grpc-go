@@ -57,14 +57,16 @@ services:
       GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?GRAFANA_CLOUD_API_KEY must be set}
     volumes:
       - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
-      - alloy_data:/var/lib/alloy/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     tmpfs:
       - /tmp
-    # The Alloy image runs as a non-root user. The Docker named volume is mounted
-    # over /var/lib/alloy/data, so its image-level ownership is not preserved.
-    # Run Alloy as root only to allow the process to initialize/write its storage
-    # directory; all Linux capabilities remain dropped and no-new-privileges is kept.
+      # Alloy requires a writable storage path for runtime state and
+      # loki.source.docker positions. Keep this state ephemeral to avoid
+      # Docker named-volume ownership problems across host/rootless setups.
+      - /var/lib/alloy/data:mode=1777
+    # The Docker socket is used by discovery.docker and loki.source.docker.
+    # Keep Alloy rootful for reliable socket access, but drop all capabilities
+    # and prevent privilege escalation. Storage is isolated in tmpfs above.
     user: "0:0"
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
@@ -252,7 +254,6 @@ services:
 
 volumes:
   postgres_data: {}
-  alloy_data: {}
 
 networks:
   backend:
