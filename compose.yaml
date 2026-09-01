@@ -48,8 +48,11 @@ services:
     command:
       - run
       - /etc/alloy/config.alloy
+      - --stability.level=experimental
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
+    environment:
+      FARO_ALLOWED_ORIGIN: ${FARO_ALLOWED_ORIGIN:-http://localhost:8080}
     volumes:
       - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
