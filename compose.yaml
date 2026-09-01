@@ -63,17 +63,11 @@ services:
     networks: [observability, egress]
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:3.0.2
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
       - ./docker/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo_data:/var/tempo
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3200/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 10s
     restart: unless-stopped
     networks: [observability]
 
@@ -181,8 +175,6 @@ services:
         condition: service_healthy
       alloy:
         condition: service_started
-      tempo:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "/app/healthcheck", "localhost:50053"]
       interval: 5s
@@ -244,8 +236,6 @@ services:
         condition: service_healthy
       alloy:
         condition: service_started
-      tempo:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"]
       interval: 5s
