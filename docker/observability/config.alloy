@@ -36,12 +36,14 @@ otelcol.processor.batch "default" {
   }
 }
 
+// OTLP application logs are routed to the same self-hosted Loki backend as
+// Docker stdout/stderr logs. Labels are intentionally kept low-cardinality.
 otelcol.processor.batch "logs" {
   send_batch_size = 512
   timeout         = "5s"
 
   output {
-    logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
+    logs = [otelcol.exporter.loki.local.input]
   }
 }
 
@@ -94,6 +96,10 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
+otelcol.exporter.loki "local" {
+  forward_to = [loki.write.local.receiver]
+}
+
 discovery.docker "backend" {
   host = "unix:///var/run/docker.sock"
 }
@@ -136,6 +142,7 @@ loki.process "backend_logs" {
     }
   }
 
+  // Correlation identifiers are structured metadata, not Loki labels.
   stage.structured_metadata {
     values = {
       trace_id = "",
