@@ -43,7 +43,7 @@ func Load() Config {
 		UserDatabaseURL: os.Getenv("USER_DATABASE_URL"), ProductDatabaseURL: os.Getenv("PRODUCT_DATABASE_URL"), OrderDatabaseURL: os.Getenv("ORDER_DATABASE_URL"),
 		JWTSecret: os.Getenv("JWT_SECRET"), JWTIssuer: env("JWT_ISSUER", "user-service"), JWTTTL: time.Duration(envInt("JWT_TTL_MINUTES", 60))*time.Minute,
 		AuthCookieName: env("AUTH_COOKIE_NAME", "access_token"), AuthCookiePath: env("AUTH_COOKIE_PATH", "/"), AuthCookieSecure: envBool("AUTH_COOKIE_SECURE", false), AuthCookieSameSite: strings.ToLower(env("AUTH_COOKIE_SAMESITE", "lax")),
-		CORSAllowedOrigins: envCSV("CORS_ALLOWED_ORIGINS", "http://localhost:5173"), CORSCredentials: envBool("CORS_ALLOW_CREDENTIALS", true),
+		CORSAllowedOrigins: envCSV("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"), CORSCredentials: envBool("CORS_ALLOW_CREDENTIALS", true),
 		RabbitMQURL: os.Getenv("RABBITMQ_URL"), RedisAddress: env("REDIS_ADDRESS", "localhost:6379"), RedisPassword: os.Getenv("REDIS_PASSWORD"), RedisDB: envInt("REDIS_DB", 0), RedisTimeout: time.Duration(envInt("REDIS_TIMEOUT_MS", 100))*time.Millisecond, ProductCacheTTL: time.Duration(envInt("PRODUCT_CACHE_TTL_SECONDS", 60))*time.Second,
 		ObservabilityEnabled: envBool("OBSERVABILITY_ENABLED", false),
 	}
