@@ -61,6 +61,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     tmpfs:
       - /tmp
+    # The Alloy image runs as a non-root user. The Docker named volume is mounted
+    # over /var/lib/alloy/data, so its image-level ownership is not preserved.
+    # Run Alloy as root only to allow the process to initialize/write its storage
+    # directory; all Linux capabilities remain dropped and no-new-privileges is kept.
+    user: "0:0"
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
