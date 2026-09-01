@@ -7,7 +7,7 @@ otelcol.receiver.faro "frontend" {
   endpoint = "0.0.0.0:12348"
 
   cors {
-    allowed_origins = ["http://localhost:8080"]
+    allowed_origins = [coalesce(sys.env("FARO_ALLOWED_ORIGIN"), "http://localhost:8080")]
     allowed_headers = ["Content-Type", "Traceparent", "X-Faro-Session-Id"]
     max_age         = 3600
   }
