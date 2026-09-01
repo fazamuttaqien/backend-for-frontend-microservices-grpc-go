@@ -50,11 +50,6 @@ services:
       - /etc/alloy/config.alloy
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
-    environment:
-      GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT:?GRAFANA_CLOUD_OTLP_ENDPOINT must be set}
-      GRAFANA_CLOUD_LOKI_ENDPOINT: ${GRAFANA_CLOUD_LOKI_ENDPOINT:?GRAFANA_CLOUD_LOKI_ENDPOINT must be set}
-      GRAFANA_CLOUD_INSTANCE_ID: ${GRAFANA_CLOUD_INSTANCE_ID:?GRAFANA_CLOUD_INSTANCE_ID must be set}
-      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?GRAFANA_CLOUD_API_KEY must be set}
     volumes:
       - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -65,7 +60,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    networks: [observability, egress]
+    networks: [observability]
 
   tempo:
     image: grafana/tempo:3.0.2
@@ -86,17 +81,11 @@ services:
     networks: [observability]
 
   mimir:
-    image: grafana/mimir:latest
-    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    image: grafana/mimir:3.1.4
+    command: ["-target=all", "-config.file=/etc/mimir/mimir.yaml"]
     volumes:
       - ./docker/observability/mimir.yaml:/etc/mimir/mimir.yaml:ro
       - mimir_data:/data
-    healthcheck:
-      test: ["CMD", "/bin/mimir", "-target=all", "-config.file=/etc/mimir/mimir.yaml", "-verify-config"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     restart: unless-stopped
     networks: [observability]
 
@@ -291,5 +280,3 @@ networks:
   observability:
     driver: bridge
     internal: true
-  egress:
-    driver: bridge
