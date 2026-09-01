@@ -89,6 +89,23 @@ services:
     restart: unless-stopped
     networks: [observability]
 
+  grafana:
+    image: grafana/grafana:12.1.1
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
+    networks: [observability]
+
   user-service:
     build:
       context: .
@@ -273,6 +290,7 @@ volumes:
   tempo_data: {}
   loki_data: {}
   mimir_data: {}
+  grafana_data: {}
 
 networks:
   backend:
