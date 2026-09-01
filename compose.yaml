@@ -85,6 +85,21 @@ services:
     restart: unless-stopped
     networks: [observability]
 
+  mimir:
+    image: grafana/mimir:latest
+    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    volumes:
+      - ./docker/observability/mimir.yaml:/etc/mimir/mimir.yaml:ro
+      - mimir_data:/data
+    healthcheck:
+      test: ["CMD", "/bin/mimir", "-target=all", "-config.file=/etc/mimir/mimir.yaml", "-verify-config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks: [observability]
+
   user-service:
     build:
       context: .
@@ -268,6 +283,7 @@ volumes:
   postgres_data: {}
   tempo_data: {}
   loki_data: {}
+  mimir_data: {}
 
 networks:
   backend:
