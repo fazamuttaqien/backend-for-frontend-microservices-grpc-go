@@ -39,12 +39,12 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 20
+      start_period: 30s
     networks: [backend]
 
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.19.2
     command:
       - run
       - /etc/alloy/config.alloy
