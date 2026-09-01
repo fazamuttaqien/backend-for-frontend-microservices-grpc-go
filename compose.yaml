@@ -44,6 +44,7 @@ services:
     networks: [backend]
 
   alloy:
+    profiles: [observability]
     image: grafana/alloy:v1.19.2
     command:
       - run
@@ -68,6 +69,7 @@ services:
     networks: [observability]
 
   tempo:
+    profiles: [observability]
     image: grafana/tempo:3.0.2
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
@@ -77,6 +79,7 @@ services:
     networks: [observability]
 
   loki:
+    profiles: [observability]
     image: grafana/loki:3.7.0
     command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
@@ -86,6 +89,7 @@ services:
     networks: [observability]
 
   mimir:
+    profiles: [observability]
     image: grafana/mimir:3.1.4
     command: ["-target=all", "-config.file=/etc/mimir/mimir.yaml"]
     volumes:
@@ -95,6 +99,7 @@ services:
     networks: [observability]
 
   grafana:
+    profiles: [observability]
     image: grafana/grafana:12.1.1
     volumes:
       - grafana_data:/var/lib/grafana
@@ -123,14 +128,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       OTEL_RESOURCE_ATTRIBUTES: ${USER_OTEL_RESOURCE_ATTRIBUTES:-service.name=user-service\,service.namespace=bff-microservices-grpc\,deployment.environment=production\,service.version=0.1.0}
     depends_on:
       postgres:
         condition: service_healthy
-      alloy:
-        condition: service_started
     healthcheck:
       test: ["CMD", "/app/healthcheck", "localhost:50051"]
       interval: 5s
@@ -138,12 +142,11 @@ services:
       retries: 10
       start_period: 10s
     read_only: true
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    networks: [backend, observability]
+    networks: [backend]
 
   product-service:
     build:
@@ -162,6 +165,7 @@ services:
       REDIS_DB: ${REDIS_DB:-0}
       REDIS_TIMEOUT_MS: ${REDIS_TIMEOUT_MS:-100}
       PRODUCT_CACHE_TTL_SECONDS: ${PRODUCT_CACHE_TTL_SECONDS:-60}
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       OTEL_RESOURCE_ATTRIBUTES: ${PRODUCT_OTEL_RESOURCE_ATTRIBUTES:-service.name=product-service\,service.namespace=bff-microservices-grpc\,deployment.environment=production\,service.version=0.1.0}
@@ -170,8 +174,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      alloy:
-        condition: service_started
     healthcheck:
       test: ["CMD", "/app/healthcheck", "localhost:50052"]
       interval: 5s
@@ -179,12 +181,11 @@ services:
       retries: 10
       start_period: 10s
     read_only: true
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    networks: [backend, observability]
+    networks: [backend]
 
   order-service:
     build:
@@ -201,6 +202,7 @@ services:
       USER_SERVICE_ADDRESS: user-service:50051
       PRODUCT_SERVICE_ADDRESS: product-service:50052
       RABBITMQ_URL: amqp://${RABBITMQ_USER:?RABBITMQ_USER must be set}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}@rabbitmq:5672/
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       OTEL_RESOURCE_ATTRIBUTES: ${ORDER_OTEL_RESOURCE_ATTRIBUTES:-service.name=order-service\,service.namespace=bff-microservices-grpc\,deployment.environment=production\,service.version=0.1.0}
@@ -213,8 +215,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      alloy:
-        condition: service_started
     healthcheck:
       test: ["CMD", "/app/healthcheck", "localhost:50053"]
       interval: 5s
@@ -222,12 +222,11 @@ services:
       retries: 10
       start_period: 10s
     read_only: true
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    networks: [backend, observability]
+    networks: [backend]
 
   notification-consumer:
     build:
@@ -237,12 +236,12 @@ services:
         APP: consumers/notification
     environment:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:?RABBITMQ_USER must be set}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}@rabbitmq:5672/
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-false}
     depends_on:
       rabbitmq:
         condition: service_healthy
     read_only: true
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
@@ -262,6 +261,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       JWT_ISSUER: ${JWT_ISSUER:-user-service}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-60}
+      OBSERVABILITY_ENABLED: ${OBSERVABILITY_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       OTEL_RESOURCE_ATTRIBUTES: ${BFF_OTEL_RESOURCE_ATTRIBUTES:-service.name=bff\,service.namespace=bff-microservices-grpc\,deployment.environment=production\,service.version=0.1.0}
@@ -274,8 +274,6 @@ services:
         condition: service_healthy
       order-service:
         condition: service_healthy
-      alloy:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/healthz"]
       interval: 5s
@@ -283,12 +281,11 @@ services:
       retries: 10
       start_period: 10s
     read_only: true
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
-    networks: [backend, observability]
+    networks: [backend]
 
 volumes:
   postgres_data: {}
