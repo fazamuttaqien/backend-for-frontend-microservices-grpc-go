@@ -47,9 +47,11 @@ otelcol.processor.batch "logs" {
   }
 }
 
+// Metrics: OTLP HTTP to the local Mimir OTLP endpoint.
 otelcol.exporter.otlphttp "mimir" {
   client {
     endpoint = "http://mimir:9009/otlp"
+    timeout  = "10s"
   }
 
   retry_on_failure {
@@ -66,13 +68,15 @@ otelcol.exporter.otlphttp "mimir" {
   }
 }
 
+// Traces: OTLP gRPC to the local Tempo OTLP receiver.
 otelcol.exporter.otlp "tempo" {
+  timeout = "10s"
+
   client {
     endpoint = "tempo:4317"
     tls {
       insecure = true
     }
-    timeout = "10s"
   }
 
   retry_on_failure {
@@ -89,6 +93,7 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
+// OTLP logs -> Loki bridge. Delivery retry/queueing is handled by loki.write.
 otelcol.exporter.loki "local" {
   forward_to = [loki.write.local.receiver]
 }
@@ -152,10 +157,15 @@ loki.process "backend_logs" {
   forward_to = [loki.write.local.receiver]
 }
 
+// Local Loki is single-tenant and stays on the Docker-internal observability
+// network. Its built-in queue and retry settings provide bounded buffering.
 loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
 
+    remote_timeout      = "10s"
+    batch_size          = "1MiB"
+    batch_wait          = "1s"
     retry_on_http_429   = true
     min_backoff_period  = "1s"
     max_backoff_period  = "30s"
