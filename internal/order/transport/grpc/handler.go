@@ -99,7 +99,7 @@ func (h *Handler) ListOrders(ctx context.Context, in *orderv1.ListOrdersRequest)
 	if err != nil {
 		return nil, err
 	}
-	orders, total, err := h.app.List(ctx, int(in.Page), int(in.PageSize))
+	orders, _, err := h.app.List(ctx, int(in.Page), int(in.PageSize))
 	if err != nil {
 		return nil, mapErr(err)
 	}

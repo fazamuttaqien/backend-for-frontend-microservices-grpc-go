@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func TestHTTPMiddlewareCreatesServerTraceAndServerTimingWithoutIncomingTraceparent(t *testing.T) {
 	previous := otel.GetTracerProvider()
-	tp := trace.NewTracerProvider()
+	tp := sdktrace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
 	defer func() {
 		otel.SetTracerProvider(previous)
@@ -42,7 +42,7 @@ func TestHTTPMiddlewareCreatesServerTraceAndServerTimingWithoutIncomingTracepare
 
 func TestHTTPMiddlewareContinuesIncomingTraceparentAndReturnsServerTiming(t *testing.T) {
 	previous := otel.GetTracerProvider()
-	tp := trace.NewTracerProvider()
+	tp := sdktrace.NewTracerProvider()
 	otel.SetTracerProvider(tp)
 	defer func() {
 		otel.SetTracerProvider(previous)

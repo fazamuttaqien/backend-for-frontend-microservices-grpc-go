@@ -21,6 +21,14 @@ type aggregationUserClient struct {
 	err  error
 }
 
+func (c *aggregationUserClient) Register(context.Context, string, string, string) (*userv1.User, error) {
+	return c.user, c.err
+}
+
+func (c *aggregationUserClient) Login(context.Context, string, string) (*userv1.LoginResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (c *aggregationUserClient) Get(context.Context, string, string) (*userv1.User, error) {
 	return c.user, c.err
 }
@@ -87,9 +95,22 @@ func TestGetOrderAggregatesOrderCustomerAndProducts(t *testing.T) {
 	server := NewServer(nil, Clients{
 		Order: &aggregationOrderClient{order: &orderv1.Order{
 			Id: "order-1", UserId: "user-1", Status: "pending",
-			Items: []*orderv1.OrderItem{{ProductId: "product-1", Quantity: 2}, {ProductId: "product-2", Quantity: 1}},
+			Items: []*orderv1.OrderItem{
+				{
+					ProductId: "product-1",
+					Quantity:  2,
+				}, {
+					ProductId: "product-2",
+					Quantity:  1,
+				},
+			},
 		}},
-		User:    &aggregationUserClient{user: &userv1.User{Id: "user-1", Name: "Faza", Email: "user@example.com"}},
+		User: &aggregationUserClient{
+			user: &userv1.User{
+				Id:    "user-1",
+				Name:  "Faza",
+				Email: "user@example.com"},
+		},
 		Product: products,
 	})
 
@@ -129,8 +150,13 @@ func TestGetOrderReportsPartialProductFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := NewServer(jwt, Clients{
-		Order:   &aggregationOrderClient{order: &orderv1.Order{Id: "order-1", UserId: "user-1", Items: []*orderv1.OrderItem{{ProductId: "product-1"}, {ProductId: "product-2"}}}},
-		User:    &aggregationUserClient{user: &userv1.User{Id: "user-1", Name: "Faza"}},
+		Order: &aggregationOrderClient{order: &orderv1.Order{Id: "order-1", UserId: "user-1", Items: []*orderv1.OrderItem{{ProductId: "product-1"}, {ProductId: "product-2"}}}},
+		User: &aggregationUserClient{
+			user: &userv1.User{
+				Id:   "user-1",
+				Name: "Faza",
+			},
+		},
 		Product: products,
 	})
 
