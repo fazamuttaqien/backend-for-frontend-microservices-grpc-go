@@ -3,6 +3,21 @@ logging {
   format = "logfmt"
 }
 
+otelcol.receiver.faro "frontend" {
+  endpoint = "0.0.0.0:12348"
+
+  cors {
+    allowed_origins = ["http://localhost:8080"]
+    allowed_headers = ["Content-Type", "Traceparent", "X-Faro-Session-Id"]
+    max_age         = 3600
+  }
+
+  output {
+    logs   = [otelcol.processor.memory_limiter.default.input]
+    traces = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
 otelcol.receiver.otlp "default" {
   grpc { endpoint = "0.0.0.0:4317" }
   http { endpoint = "0.0.0.0:4318" }
@@ -36,8 +51,8 @@ otelcol.processor.batch "default" {
   }
 }
 
-// OTLP application logs are routed to the same self-hosted Loki backend as
-// Docker stdout/stderr logs. Labels are intentionally kept low-cardinality.
+// OTLP and Faro application logs are routed to the same self-hosted Loki backend.
+// Labels are intentionally kept low-cardinality.
 otelcol.processor.batch "logs" {
   send_batch_size = 512
   timeout         = "5s"
@@ -93,7 +108,7 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
-// OTLP logs -> Loki bridge. Delivery retry/queueing is handled by loki.write.
+// OTLP/Faro logs -> Loki bridge. Delivery retry/queueing is handled by loki.write.
 otelcol.exporter.loki "local" {
   forward_to = [loki.write.local.receiver]
 }
