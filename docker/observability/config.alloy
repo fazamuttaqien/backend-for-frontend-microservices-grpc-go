@@ -21,7 +21,7 @@ otelcol.processor.memory_limiter "default" {
 
   output {
     metrics = [otelcol.processor.batch.default.input]
-    logs    = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.logs.input]
     traces  = [otelcol.processor.batch.default.input]
   }
 }
@@ -32,8 +32,16 @@ otelcol.processor.batch "default" {
 
   output {
     metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
-    logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
     traces  = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.processor.batch "logs" {
+  send_batch_size = 512
+  timeout         = "5s"
+
+  output {
+    logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
   }
 }
 
@@ -101,7 +109,7 @@ discovery.relabel "backend_logs" {
 
   rule {
     target_label = "environment"
-    replacement  = "production"
+    replacement  = "development"
   }
 
   rule {
@@ -148,9 +156,9 @@ loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
 
-    retry_on_http_429 = true
-    min_backoff_period = "1s"
-    max_backoff_period = "30s"
+    retry_on_http_429   = true
+    min_backoff_period  = "1s"
+    max_backoff_period  = "30s"
     max_backoff_retries = 10
   }
 }
