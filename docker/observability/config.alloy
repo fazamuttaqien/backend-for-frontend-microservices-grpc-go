@@ -86,10 +86,6 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
-// Go applications currently write structured JSON logs to stdout. Collect those
-// Docker logs without rewriting the application logging system. trace_id and
-// span_id are kept as structured metadata, not Loki labels, to avoid cardinality
-// explosion while preserving Grafana trace correlation.
 discovery.docker "backend" {
   host = "unix:///var/run/docker.sock"
 }
@@ -99,13 +95,18 @@ discovery.relabel "backend_logs" {
 
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/(bff|user-service|product-service|order-service)"
+    regex         = "/(bff|user-service|product-service|order-service|notification-consumer)"
     target_label  = "service_name"
   }
 
   rule {
+    target_label = "environment"
+    replacement  = "production"
+  }
+
+  rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/(bff|user-service|product-service|order-service)"
+    regex         = "/(bff|user-service|product-service|order-service|notification-consumer)"
     action        = "keep"
   }
 }
@@ -140,17 +141,12 @@ loki.process "backend_logs" {
     }
   }
 
-  forward_to = [loki.write.grafana_cloud.receiver]
+  forward_to = [loki.write.local.receiver]
 }
 
-loki.write "grafana_cloud" {
+loki.write "local" {
   endpoint {
-    url = sys.env("GRAFANA_CLOUD_LOKI_ENDPOINT")
-
-    basic_auth {
-      username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
-      password = sys.env("GRAFANA_CLOUD_API_KEY")
-    }
+    url = "http://loki:3100/loki/api/v1/push"
 
     retry_on_http_429 = true
     min_backoff_period = "1s"
