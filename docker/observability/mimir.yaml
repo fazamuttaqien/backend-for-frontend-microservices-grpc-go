@@ -1,0 +1,33 @@
+multitenancy_enabled: false
+
+server:
+  http_listen_address: 0.0.0.0
+  http_listen_port: 9009
+
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      dir: /data
+
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/blocks
+
+compactor:
+  data_dir: /data/compactor
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/rules
+
+ruler:
+  rule_path: /data/ruler
+
+activity_tracker:
+  filepath: /data/metrics-activity.log
+
+usage_stats:
+  enabled: false
