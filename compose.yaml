@@ -77,7 +77,7 @@ services:
     networks: [observability]
 
   loki:
-    image: grafana/loki:3.5.0
+    image: grafana/loki:3.7.0
     command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
       - ./docker/observability/loki.yaml:/etc/loki/loki.yaml:ro
