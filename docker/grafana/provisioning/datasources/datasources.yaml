@@ -1,5 +1,7 @@
 apiVersion: 1
 
+prune: true
+
 datasources:
   - name: Loki
     uid: loki
@@ -10,9 +12,11 @@ datasources:
     jsonData:
       derivedFields:
         - name: TraceID
-          matcherRegex: 'trace_id[=: ]+([a-fA-F0-9]{32})'
+          matcherType: label
+          matcherRegex: trace_id
           datasourceUid: tempo
           url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'
 
   - name: Tempo
     uid: tempo
@@ -25,6 +29,8 @@ datasources:
         datasourceUid: loki
         filterByTraceID: true
         filterBySpanID: false
+        spanStartTimeShift: '-1m'
+        spanEndTimeShift: '1m'
         tags:
           - key: service.name
             value: service_name
@@ -48,5 +54,6 @@ datasources:
     isDefault: true
     jsonData:
       exemplarTraceIdDestinations:
-        - datasourceUid: tempo
-          name: trace_id
+        - name: trace_id
+          datasourceUid: tempo
+          urlDisplayLabel: 'View Trace: $${__value.raw}'
