@@ -76,6 +76,15 @@ services:
     restart: unless-stopped
     networks: [observability]
 
+  loki:
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./docker/observability/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+    networks: [observability]
+
   user-service:
     build:
       context: .
@@ -258,6 +267,7 @@ services:
 volumes:
   postgres_data: {}
   tempo_data: {}
+  loki_data: {}
 
 networks:
   backend:
